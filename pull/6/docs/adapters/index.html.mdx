@@ -64,7 +64,8 @@ exactly this: it inspects the model’s loss, so a point-loss model fails
 the same class succeeds. It also refuses the quantile and refit
 capabilities when the model has exogenous features.
 `StatsForecastAdapter` does the same when `exog_features` is set, and
-`MLForecastAdapter`, which has no quantile path, refuses refit.
+`MLForecastAdapter`, which has no quantile path, refuses refit when
+`exog_features` is set.
 
 ## Lazy imports
 
@@ -92,7 +93,7 @@ real model.
 
 ## Next
 
--   [StatsForecast](statsforecast) — the most capable adapter; all six
+-   [StatsForecast](statsforecast) — the most capable adapter; all seven
     methods work behind it.
 -   [MLForecast](mlforecast) — a global gradient-boosted model, and the
     one capability gap.
