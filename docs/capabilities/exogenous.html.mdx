@@ -7,7 +7,7 @@ to the *calibration*, letting interval width vary with the step being
 predicted rather than resting only on the size of recent errors.
 
 This page threads a feature block through calibration and prediction,
-and shows what [SPCI](../methods/spci) does with it.
+and shows what [SPCI](../methods/spci.html) does with it.
 
 ## The shape
 
@@ -184,8 +184,8 @@ so the “with `X`” numbers below differ through the regressors it fitted
 and the point forecast it was given — not through an interval query
 conditioned on the future features.
 
-[Split conformal](../methods/split) ignores `X` even when given it: its
-score is a plain absolute residual with nowhere to put a feature.
+[Split conformal](../methods/split.html) ignores `X` even when given it:
+its score is a plain absolute residual with nowhere to put a feature.
 Passing `X` to a method that cannot use it is not an error, and not
 useful either.
 
@@ -323,20 +323,21 @@ separating:
     *cannot* contain — a scheduled promotion, a known outage, a holiday
     calendar that does not repeat annually.
 -   **The horizon.** SPCI under-covers at multi-step horizons on real
-    series; see the warning on the [SPCI page](../methods/spci) for the
-    measurement and the reason. Both SPCI columns inherit that, with or
-    without `X`.
+    series; see the warning on the [SPCI page](../methods/spci.html) for
+    the measurement and the reason. Both SPCI columns inherit that, with
+    or without `X`.
 
 The transferable lesson is the one this page opened with: thread the
 features, then *measure*. `X` is a hypothesis about what drives your
-uncertainty, and [diagnostics](diagnostics) is how you find out whether
-it was right.
+uncertainty, and [diagnostics](diagnostics.html) is how you find out
+whether it was right.
 
 ## Next
 
--   [SPCI](../methods/spci) — the method that consumes `X`, in full.
--   [Adapters](../adapters/index) — writing your own, including the `X`
-    keyword.
--   [Diagnostics](diagnostics) — measuring whether the features earned
-    their place.
+-   [SPCI](../methods/spci.html) — the method that consumes `X`, in
+    full.
+-   [Adapters](../adapters/index.html) — writing your own, including the
+    `X` keyword.
+-   [Diagnostics](diagnostics.html) — measuring whether the features
+    earned their place.
 

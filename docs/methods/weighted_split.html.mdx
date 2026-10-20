@@ -2,13 +2,13 @@
 title: Weighted split conformal
 ---
 
-[Split conformal](split) treats every calibration residual as equally
-informative about the next one. That is exactly what exchangeability
-buys, and **covariate shift** is the assumption failing in the most
-common way: the steps you are about to predict do not look like the
-steps you calibrated on. A model calibrated on a quiet, low-volume
-stretch of a series is asked about a high-volume one; a panel calibrated
-on one set of stores is asked about another.
+[Split conformal](split.html) treats every calibration residual as
+equally informative about the next one. That is exactly what
+exchangeability buys, and **covariate shift** is the assumption failing
+in the most common way: the steps you are about to predict do not look
+like the steps you calibrated on. A model calibrated on a quiet,
+low-volume stretch of a series is asked about a high-volume one; a panel
+calibrated on one set of stores is asked about another.
 
 `WeightedSplit` keeps the whole split-conformal construction and changes
 exactly one thing: each calibration score gets a **weight** saying how
@@ -141,7 +141,7 @@ called on the fitted object `calibrate` returned: it hands a weight
 function the **features** of the target domain — no target truths — and
 returns a new fitted object with the quantile rebuilt, leaving the
 source fit untouched. See [Transfer and
-adaptation](../capabilities/transfer) for the full set of verbs.
+adaptation](../capabilities/transfer.html) for the full set of verbs.
 
 ```python
 def holdout_intervals(fitted, X=None):
@@ -301,8 +301,8 @@ discards most of the signal it was meant to protect. Loosening it to
     pricing rule, a changed measurement process, a forecaster that has
     gone stale — no reweighting of the old residuals describes the new
     ones. That is a job for [recalibration on target
-    labels](../capabilities/transfer) if you have them, or an [online
-    method](aci) if you do not.
+    labels](../capabilities/transfer.html) if you have them, or an
+    [online method](aci.html) if you do not.
 -   **The density ratio is badly estimated.** The weights are the output
     of a classifier, and a bad classifier gives confidently wrong
     weights. Too flexible and it memorises which rows are source and
@@ -317,11 +317,11 @@ discards most of the signal it was meant to protect. Loosening it to
 -   **You have target labels.** If you can observe target
     `(prediction, truth)` pairs, calibrating on them directly is
     strictly better than reweighting a proxy. Use
-    [`recalibrate()`](../capabilities/transfer).
+    [`recalibrate()`](../capabilities/transfer.html).
 -   **You have no features at all.** With `X=None` the weight function
     cannot fit and `WeightedSplit` is plain split conformal. Reach for
-    [NexCP](nexcp) instead, which down-weights by *recency* rather than
-    by features and needs no covariates.
+    [NexCP](nexcp.html) instead, which down-weights by *recency* rather
+    than by features and needs no covariates.
 
 ## References
 
@@ -332,9 +332,11 @@ discards most of the signal it was meant to protect. Loosening it to
 
 ## Next
 
--   [Transfer and adaptation](../capabilities/transfer) — `calibrate`,
-    `recalibrate` and `adapt`, and which one your target data allows.
--   [Split conformal](split) — the unweighted method this reduces to.
--   [Diagnostics](../capabilities/diagnostics) — measuring coverage and
-    width together.
+-   [Transfer and adaptation](../capabilities/transfer.html) —
+    `calibrate`, `recalibrate` and `adapt`, and which one your target
+    data allows.
+-   [Split conformal](split.html) — the unweighted method this reduces
+    to.
+-   [Diagnostics](../capabilities/diagnostics.html) — measuring coverage
+    and width together.
 

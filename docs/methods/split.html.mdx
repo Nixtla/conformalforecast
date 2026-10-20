@@ -328,7 +328,7 @@ staffing, capacity — or when the forecaster is biased and you would
 rather shift than widen. Stay symmetric otherwise: it needs less
 calibration data, and an uninformative tilt just moves coverage around.
 When the asymmetry depends on the *features* of each step rather than
-being a constant offset, that is [CQR](cqr)’s job, not this one.
+being a constant offset, that is [CQR](cqr.html)’s job, not this one.
 
 ## Using the array surface
 
@@ -364,14 +364,15 @@ identical to the forecaster-surface result
 
 -   **Your coverage drifts over time.** Split conformal calibrates once
     and never looks again, so a regime change leaves it silently
-    mis-calibrated. Use [ACI](aci), [AgACI](agaci) or [NexCP](nexcp).
+    mis-calibrated. Use [ACI](aci.html), [AgACI](agaci.html) or
+    [NexCP](nexcp.html).
 -   **Your errors are strongly heteroscedastic.** The absolute-residual
     score makes one constant-width band per cell. If the noise scales
     with the level, that band is wrong nearly everywhere. Use
-    [CQR](cqr).
+    [CQR](cqr.html).
 -   **You need the width itself to be informative.** A constant band
     cannot say “this particular step is unusually uncertain”. Use
-    [SPCI](spci).
+    [SPCI](spci.html).
 
 None of these are reasons to skip split conformal first — it is the
 measurement that tells you which of the three problems you actually
@@ -390,8 +391,9 @@ have.
 
 ## Next
 
--   [CQR](cqr) — the other offline method, for heteroscedastic errors.
--   [Methods overview](index) — the decision guide.
--   [Diagnostics](../capabilities/diagnostics) — measuring an interval
-    properly.
+-   [CQR](cqr.html) — the other offline method, for heteroscedastic
+    errors.
+-   [Methods overview](index.html) — the decision guide.
+-   [Diagnostics](../capabilities/diagnostics.html) — measuring an
+    interval properly.
 

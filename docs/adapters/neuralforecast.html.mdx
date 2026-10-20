@@ -51,8 +51,8 @@ training through 2015-01-25 23:00:00 (72 hours held out)
 `NeuralForecastAdapter` takes **no `horizon` argument**. A
 neuralforecast model is built with its own `h`, and the adapter reads
 it. Copy the constructor call from the [StatsForecast
-page](statsforecast), add `horizon=`, and you get a `TypeError`. If the
-`NeuralForecast` holds several models they must all agree on `h`.
+page](statsforecast.html), add `horizon=`, and you get a `TypeError`. If
+the `NeuralForecast` holds several models they must all agree on `h`.
 
 ```python
 nf = NeuralForecast(
@@ -91,7 +91,7 @@ horizon read from the model: 24
 > These eight series span three orders of magnitude.
 > `scaler_type="standard"` normalises per series inside the model;
 > without it, the network fits the largest series and ignores the rest —
-> the same failure the [MLForecast page](mlforecast) documents for
+> the same failure the [MLForecast page](mlforecast.html) documents for
 > unscaled trees.
 
 ```python
@@ -259,8 +259,8 @@ The `MQLoss` model with CQR beats the point model with split conformal
 on all three numbers — better coverage, narrower, lower Winkler. That is
 the shape CQR has when a model’s own quantiles carry real information
 about where its errors fall, and it is worth contrasting with the
-[StatsForecast page](statsforecast), where CQR loses for exactly the
-opposite reason.
+[StatsForecast page](statsforecast.html), where CQR loses for exactly
+the opposite reason.
 
 > **`max_steps=100` is a documentation setting**
 >
@@ -272,8 +272,8 @@ opposite reason.
 
 ## Next
 
--   [StatsForecast](statsforecast) — per-series statistical models.
--   [MLForecast](mlforecast) — a global gradient-boosted model.
--   [CQR](../methods/cqr) — what the `MQLoss` path above feeds.
--   [Adapters](index) — the capability matrix in full.
+-   [StatsForecast](statsforecast.html) — per-series statistical models.
+-   [MLForecast](mlforecast.html) — a global gradient-boosted model.
+-   [CQR](../methods/cqr.html) — what the `MQLoss` path above feeds.
+-   [Adapters](index.html) — the capability matrix in full.
 

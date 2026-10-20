@@ -359,12 +359,13 @@ the holdout where half the observations landed outside a 90% interval.
 That is the shape a method losing its calibration makes: fine while the
 future resembles the calibration set, worse as the trend pulls away. The
 obvious response is to raise ACI’s learning rate so it reacts faster,
-and the [ACI page](../methods/aci) measures what that buys and what it
-costs: pushed far enough, `alpha_t` is driven to zero, the interval
+and the [ACI page](../methods/aci.html) measures what that buys and what
+it costs: pushed far enough, `alpha_t` is driven to zero, the interval
 widens without bound, and the coverage is bought by predicting
-“somewhere between minus and plus infinity”. [AgACI](../methods/agaci)
-is the sturdier answer — it runs several learning rates at once and lets
-an aggregator discard the ones that blow up.
+“somewhere between minus and plus infinity”.
+[AgACI](../methods/agaci.html) is the sturdier answer — it runs several
+learning rates at once and lets an aggregator discard the ones that blow
+up.
 
 > **This view mixes lead times**
 >
@@ -374,7 +375,7 @@ an aggregator discard the ones that blow up.
 > the year”, which is what a pipeline re-forecasting annually actually
 > experiences, and the wrong view for isolating a horizon step —
 > `coverage_by_horizon` is for that. When every prediction shares one
-> lead time, as on the [online updating](online-updating) page, the
+> lead time, as on the [online updating](online-updating.html) page, the
 > distinction disappears and `rolling_coverage` needs no reshape.
 
 ## Everything else in the module
@@ -392,14 +393,15 @@ reference:
     directly.
 -   `method_state` and its per-method siblings `aci_state`,
     `agaci_state`, `nexcp_state`, `spci_state` — the internal state of
-    an online method, used on the [ACI](../methods/aci) and
-    [AgACI](../methods/agaci) pages.
+    an online method, used on the [ACI](../methods/aci.html) and
+    [AgACI](../methods/agaci.html) pages.
 
 ## Next
 
--   [Methods overview](../methods/index) — choosing what to measure.
--   [Online updating](online-updating) — keeping a method honest as data
-    arrives.
--   [Ragged panels](ragged-panels) — per-series diagnostics when series
-    differ in length.
+-   [Methods overview](../methods/index.html) — choosing what to
+    measure.
+-   [Online updating](online-updating.html) — keeping a method honest as
+    data arrives.
+-   [Ragged panels](ragged-panels.html) — per-series diagnostics when
+    series differ in length.
 

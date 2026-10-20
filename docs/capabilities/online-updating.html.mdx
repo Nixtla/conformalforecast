@@ -244,17 +244,17 @@ silently.
 >
 > 1.  **Update once per observation.** Replaying the same truth twice
 >     tells the controller it missed (or hit) twice.
-> 2.  **Update in time order.** [NexCP](../methods/nexcp) weights by
->     position and [SPCI](../methods/spci) regresses on a residual
->     sequence; both read the order as time.
+> 2.  **Update in time order.** [NexCP](../methods/nexcp.html) weights
+>     by position and [SPCI](../methods/spci.html) regresses on a
+>     residual sequence; both read the order as time.
 > 3.  **Pair the truth with the prediction that preceded it**, not with
 >     the newest forecast. Passing `prediction.point` straight through,
 >     as above, makes this automatic.
 
 ## Next
 
--   [ACI](../methods/aci) — the controller, in detail.
--   [AgACI](../methods/agaci) — several controllers, aggregated.
--   [Diagnostics](diagnostics) — `rolling_coverage` and the per-method
-    state helpers, including `method_state` used above.
+-   [ACI](../methods/aci.html) — the controller, in detail.
+-   [AgACI](../methods/agaci.html) — several controllers, aggregated.
+-   [Diagnostics](diagnostics.html) — `rolling_coverage` and the
+    per-method state helpers, including `method_state` used above.
 

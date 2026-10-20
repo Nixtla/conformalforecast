@@ -198,7 +198,7 @@ own residuals. Nothing here is a global multiplier.
 ## Quantiles, and CQR
 
 `StatsForecastAdapter` exposes statsforecast’s analytical prediction
-intervals as quantiles, which is what makes [CQR](../methods/cqr)
+intervals as quantiles, which is what makes [CQR](../methods/cqr.html)
 available.
 
 ```python
@@ -218,7 +218,7 @@ quantile levels requested from statsforecast: [0.05 0.95]
 >     Asking for an unpaired quantile raises `ValueError` in the
 >     adapter. This is shared with the mlforecast and neuralforecast
 >     adapters, so asymmetric CQR (`symmetric=False`) is out of reach
->     for all three — see [CQR](../methods/cqr) for the detail.
+>     for all three — see [CQR](../methods/cqr.html) for the detail.
 > -   **No median.** `q == 0.5` is rejected; the level API has no column
 >     for it.
 >
@@ -242,7 +242,7 @@ An `exog_features` argument tells the adapter which columns of
 >
 > Note also that the exogenous `predict` path is a known gap in v0.1 (it
 > is `xfail`-marked in the integration suite). See [Exogenous
-> features](../capabilities/exogenous) for what does work today.
+> features](../capabilities/exogenous.html) for what does work today.
 
 ## Measured coverage across the panel
 
@@ -311,14 +311,15 @@ shape is right.
 And the per-series breakdown spans 69.8% to 100% around an 87.4%
 marginal. The two worst are `H150` and `H400`, and the panel-level
 number tells you nothing about them — see [ragged
-panels](../capabilities/ragged-panels) for why per-series diagnostics
-are the ones to watch.
+panels](../capabilities/ragged-panels.html) for why per-series
+diagnostics are the ones to watch.
 
 ## Next
 
--   [MLForecast](mlforecast) — the same panel through a gradient-boosted
-    model.
--   [NeuralForecast](neuralforecast) — and through a neural one.
--   [Adapters](index) — the capability matrix and how to write your own.
--   [Methods](../methods/index) — all six work behind this adapter.
+-   [MLForecast](mlforecast.html) — the same panel through a
+    gradient-boosted model.
+-   [NeuralForecast](neuralforecast.html) — and through a neural one.
+-   [Adapters](index.html) — the capability matrix and how to write your
+    own.
+-   [Methods](../methods/index.html) — all six work behind this adapter.
 

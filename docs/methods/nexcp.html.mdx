@@ -2,8 +2,8 @@
 title: Nonexchangeable conformal prediction
 ---
 
-NexCP answers the same problem as [ACI](aci) — the world moved and the
-calibration set is stale — from the opposite direction. Rather than
+NexCP answers the same problem as [ACI](aci.html) — the world moved and
+the calibration set is stale — from the opposite direction. Rather than
 moving the coverage target, it changes whose errors count.
 
 ## What it does
@@ -235,10 +235,10 @@ rho=0.9            coverage  94.8%   width    1371.3   Winkler    1429.2
     `ceil(1/alpha)` before trusting the result.
 -   **Your drift is abrupt rather than gradual.** An exponential decay
     is a smooth forgetting curve. A step change is handled better by
-    [ACI](aci), whose controller reacts to misses directly.
+    [ACI](aci.html), whose controller reacts to misses directly.
 -   **You do not know how fast to forget.** `rho` is as much a tuning
     parameter as ACI’s `gamma`, and NexCP has no aggregated variant. If
-    that bothers you, use [AgACI](agaci).
+    that bothers you, use [AgACI](agaci.html).
 
 ## References
 
@@ -248,9 +248,9 @@ https://arxiv.org/abs/2202.13415.
 
 ## Next
 
--   [SPCI](spci) — the last online method, and the only one that changes
-    the shape of the band rather than its level.
--   [Ragged panels](../capabilities/ragged-panels) — what the window
-    axis means when series have different lengths, which is exactly what
-    NexCP reads.
+-   [SPCI](spci.html) — the last online method, and the only one that
+    changes the shape of the band rather than its level.
+-   [Ragged panels](../capabilities/ragged-panels.html) — what the
+    window axis means when series have different lengths, which is
+    exactly what NexCP reads.
 

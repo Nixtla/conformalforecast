@@ -171,10 +171,11 @@ calibration arrays *means*.
 
 For split conformal the distinction rarely matters: it pools windows and
 takes a quantile, and pooling is order-free. For the recency-weighted
-methods it matters a great deal — [NexCP](../methods/nexcp) reads axis 1
-as chronological age and weights by it, and [SPCI](../methods/spci)
-feeds it to a regressor as a sequence. Aligning the axis to the calendar
-makes “age” mean the same thing across series.
+methods it matters a great deal — [NexCP](../methods/nexcp.html) reads
+axis 1 as chronological age and weights by it, and
+[SPCI](../methods/spci.html) feeds it to a regressor as a sequence.
+Aligning the axis to the calendar makes “age” mean the same thing across
+series.
 
 ```python
 method = SplitConformal(alpha=ALPHA)
@@ -271,8 +272,8 @@ actually reached.
 > dates are spread out, that union grows with the number of series
 > rather than with `n_windows`, and the cube grows with it. Worse, axis
 > 1 stops meaning “chronological age”, which is exactly what
-> [NexCP](../methods/nexcp) and [SPCI](../methods/spci) read it as.
-> Prefer the default `aligned=False` unless you specifically need
+> [NexCP](../methods/nexcp.html) and [SPCI](../methods/spci.html) read
+> it as. Prefer the default `aligned=False` unless you specifically need
 > calendar comparability.
 
 ## Per-series diagnostics
@@ -336,9 +337,10 @@ page describes is worth its complexity.
 
 ## Next
 
--   [NexCP](../methods/nexcp) — the method that reads the window axis as
-    time.
--   [Diagnostics](diagnostics) — the rest of the per-slice measurements.
--   [Architecture](../concepts/architecture) — the shape conventions in
-    full.
+-   [NexCP](../methods/nexcp.html) — the method that reads the window
+    axis as time.
+-   [Diagnostics](diagnostics.html) — the rest of the per-slice
+    measurements.
+-   [Architecture](../concepts/architecture.html) — the shape
+    conventions in full.
 

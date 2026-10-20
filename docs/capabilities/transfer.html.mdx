@@ -55,8 +55,8 @@ target pairs beat everything below them: they measure the target’s
 errors instead of estimating them from a proxy. The bottom three rows
 are what you reach for when that measurement does not exist yet.
 
-All four run through [`WeightedSplit`](../methods/weighted_split), whose
-fitted object is the one that implements `SupportsTransfer` today.
+All four run through [`WeightedSplit`](../methods/weighted_split.html),
+whose fitted object is the one that implements `SupportsTransfer` today.
 `isinstance(fitted, SupportsTransfer)` says whether a given fitted
 object can `adapt` at all; on every other one, `adapt()` does not exist,
 and calling `recalibrate()` still works identically.
@@ -315,9 +315,9 @@ The remaining rows use features.
 weight function on the features of the steps you are about to predict;
 `DensityRatio` fits a classifier that separates source rows from target
 rows and reads the importance weight off its odds. The [weighted split
-conformal page](../methods/weighted_split) works through a case with a
-real shift; here the point is what the call looks like, and what it does
-when there is no shift to correct.
+conformal page](../methods/weighted_split.html) works through a case
+with a real shift; here the point is what the call looks like, and what
+it does when there is no shift to correct.
 
 The features are two per predicted step: the log of the last 24 hours’
 level, and how far into the horizon the step sits. Source is the
@@ -399,7 +399,7 @@ Weighting is not free insurance, but it is close: when the shift is
 absent it degenerates gracefully toward split conformal rather than
 damaging a working interval. The failure mode to watch is the opposite
 one — a *confident* and wrong density ratio — which the [method page’s
-clipping section](../methods/weighted_split) measures.
+clipping section](../methods/weighted_split.html) measures.
 
 Row 4 is the two mechanisms together. They compose because they act on
 different parts of the same quantile: weights choose *which* calibration
@@ -438,7 +438,7 @@ adapt (X + series)         coverage  90.6%   mean width   1587.57
     relationship itself changed — a new process, a stale model, a
     structural break — reweighting old residuals describes the old world
     more precisely. Get target labels, or use an [online
-    method](../methods/aci) that learns from its own misses.
+    method](../methods/aci.html) that learns from its own misses.
 -   **Missing overlap.** A density ratio is only estimable where both
     domains have support. If no source window resembles the target, the
     weights are an extrapolation with a confident face.
@@ -459,10 +459,10 @@ adapt (X + series)         coverage  90.6%   mean width   1587.57
 
 ## Next
 
--   [Weighted split conformal](../methods/weighted_split) — the method
-    behind all four rows, with a worked covariate shift.
--   [Diagnostics](diagnostics) — coverage and width together, which is
-    how the rows above should be compared.
--   [Online updating](online-updating) — the other answer to a moving
-    world.
+-   [Weighted split conformal](../methods/weighted_split.html) — the
+    method behind all four rows, with a worked covariate shift.
+-   [Diagnostics](diagnostics.html) — coverage and width together, which
+    is how the rows above should be compared.
+-   [Online updating](online-updating.html) — the other answer to a
+    moving world.
 

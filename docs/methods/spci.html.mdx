@@ -205,8 +205,9 @@ exactly where the series ramps.
 >     never saw in training, and tree models cannot extrapolate.
 >
 > Neither is a reason to avoid SPCI; both are reasons to run
-> [`evaluate`](../capabilities/diagnostics) on your own data and horizon
-> before shipping it, rather than assuming the guarantee carries over.
+> [`evaluate`](../capabilities/diagnostics.html) on your own data and
+> horizon before shipping it, rather than assuming the guarantee carries
+> over.
 
 ## When not to use it
 
@@ -214,12 +215,13 @@ exactly where the series ramps.
     third-party dependency.
 -   **Your grid is large.** `n_series × horizon` regressors, refitted as
     you go. A 100-series panel at horizon 48 is 4 800 forests — consider
-    [CQR](cqr), which gets varying width from a model you already fit.
+    [CQR](cqr.html), which gets varying width from a model you already
+    fit.
 -   **Your calibration set is short.** `window_size + 1` residuals per
     series is a real constraint, and the default `window_size` is 100.
 -   **You need the classical guarantee, or a long horizon.** [Split
-    conformal](split) is finite-sample and assumption-light; on this
-    data it is also the one that holds its coverage at horizon 6.
+    conformal](split.html) is finite-sample and assumption-light; on
+    this data it is also the one that holds its coverage at horizon 6.
 
 ## References
 
@@ -228,10 +230,10 @@ Series,” in Proc. ICML, 2023. https://arxiv.org/abs/2212.03463.
 
 ## Next
 
--   [Methods overview](index) — the decision guide, now that you have
-    seen all seven.
--   [Exogenous features](../capabilities/exogenous) — SPCI is the method
-    that can actually use them.
--   [Diagnostics](../capabilities/diagnostics) — how to run the
+-   [Methods overview](index.html) — the decision guide, now that you
+    have seen all seven.
+-   [Exogenous features](../capabilities/exogenous.html) — SPCI is the
+    method that can actually use them.
+-   [Diagnostics](../capabilities/diagnostics.html) — how to run the
     measurement the callout above asks for.
 

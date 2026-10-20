@@ -240,12 +240,12 @@ fitted = cqr.calibrate_cv(forecaster, n_windows=24)
 > What does work is an adapter that implements `SupportsQuantiles`
 > directly and serves arbitrary levels, bypassing the level API. That is
 > a dozen lines on top of your own model; `tests/helpers.py` has a
-> working example, and [Adapters](../adapters/index) covers the
+> working example, and [Adapters](../adapters/index.html) covers the
 > contract. Until a Nixtla adapter grows a non-level quantile path, that
 > is the only route to an asymmetric interval *from CQR*.
 >
 > It is not the only route to an asymmetric conformal interval.
-> [`SplitConformal(symmetric=False, alpha_lo=..., alpha_hi=...)`](split)
+> [`SplitConformal(symmetric=False, alpha_lo=..., alpha_hi=...)`](split.html)
 > takes one one-sided conformal quantile of the **signed** residual per
 > tail, so it needs no quantile capability at all and works through
 > every adapter, the three Nixtla ones included. What it buys is
@@ -260,10 +260,11 @@ fitted = cqr.calibrate_cv(forecaster, n_windows=24)
 
 -   **Your forecaster has no quantiles.** Most gradient-boosting setups
     through mlforecast do not, and CQR will refuse the moment you
-    calibrate. Use [split conformal](split), or [SPCI](spci) if you want
-    varying width without a quantile-capable model.
+    calibrate. Use [split conformal](split.html), or [SPCI](spci.html)
+    if you want varying width without a quantile-capable model.
 -   **Your coverage drifts over time.** CQR is offline: it calibrates
-    once. Pair the diagnosis with [ACI](aci) or [NexCP](nexcp).
+    once. Pair the diagnosis with [ACI](aci.html) or
+    [NexCP](nexcp.html).
 
 ## References
 
@@ -273,8 +274,8 @@ https://arxiv.org/abs/1905.03222.
 
 ## Next
 
--   [ACI](aci) — the first online method, for coverage that drifts.
--   [SPCI](spci) — varying width from a residual model rather than a
-    quantile model.
--   [Methods overview](index) — the decision guide.
+-   [ACI](aci.html) — the first online method, for coverage that drifts.
+-   [SPCI](spci.html) — varying width from a residual model rather than
+    a quantile model.
+-   [Methods overview](index.html) — the decision guide.
 

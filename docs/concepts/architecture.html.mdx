@@ -76,7 +76,7 @@ method-specific values.
 
 An object fitted this way has no forecaster, so `fitted.predict` raises
 `CalibrationError` telling you to use `interval` — see
-[Embedding](embedding).
+[Embedding](embedding.html).
 
 ## Construction is keyword-only, and config is a schema
 
@@ -186,7 +186,7 @@ themselves.
 > happens. Constructing it does not: with no forecaster in hand there is
 > nothing to check. And `predict` never raises it — a fitted object is
 > only ever built after the check passed. See
-> [Adapters](../adapters/index) for the matrix.
+> [Adapters](../adapters/index.html) for the matrix.
 
 ## Shapes
 
@@ -297,8 +297,8 @@ from conformalforecast import SplitConformal
 register_interval_method("conformal_method_split", SplitConformal)
 ```
 
-[Embedding](embedding) walks through this in full: the layout contract,
-the arguments the shim does not support (weighted and transfer
+[Embedding](embedding.html) walks through this in full: the layout
+contract, the arguments the shim does not support (weighted and transfer
 conformal), and the two upstream changes needed for full method
 coverage.
 
