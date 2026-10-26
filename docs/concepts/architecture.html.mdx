@@ -76,7 +76,7 @@ method-specific values.
 
 An object fitted this way has no forecaster, so `fitted.predict` raises
 `CalibrationError` telling you to use `interval` — see
-[Embedding](embedding.html).
+[Embedding](./embedding.html).
 
 ## Construction is keyword-only, and config is a schema
 
@@ -297,7 +297,7 @@ from conformalforecast import SplitConformal
 register_interval_method("conformal_method_split", SplitConformal)
 ```
 
-[Embedding](embedding.html) walks through this in full: the layout
+[Embedding](./embedding.html) walks through this in full: the layout
 contract, the arguments the shim does not support (weighted and transfer
 conformal), and the two upstream changes needed for full method
 coverage.

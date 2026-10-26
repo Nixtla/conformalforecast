@@ -2,7 +2,7 @@
 title: Weighted split conformal
 ---
 
-[Split conformal](split.html) treats every calibration residual as
+[Split conformal](./split.html) treats every calibration residual as
 equally informative about the next one. That is exactly what
 exchangeability buys, and **covariate shift** is the assumption failing
 in the most common way: the steps you are about to predict do not look
@@ -302,7 +302,7 @@ discards most of the signal it was meant to protect. Loosening it to
     gone stale — no reweighting of the old residuals describes the new
     ones. That is a job for [recalibration on target
     labels](../capabilities/transfer.html) if you have them, or an
-    [online method](aci.html) if you do not.
+    [online method](./aci.html) if you do not.
 -   **The density ratio is badly estimated.** The weights are the output
     of a classifier, and a bad classifier gives confidently wrong
     weights. Too flexible and it memorises which rows are source and
@@ -320,8 +320,8 @@ discards most of the signal it was meant to protect. Loosening it to
     [`recalibrate()`](../capabilities/transfer.html).
 -   **You have no features at all.** With `X=None` the weight function
     cannot fit and `WeightedSplit` is plain split conformal. Reach for
-    [NexCP](nexcp.html) instead, which down-weights by *recency* rather
-    than by features and needs no covariates.
+    [NexCP](./nexcp.html) instead, which down-weights by *recency*
+    rather than by features and needs no covariates.
 
 ## References
 
@@ -335,7 +335,7 @@ discards most of the signal it was meant to protect. Loosening it to
 -   [Transfer and adaptation](../capabilities/transfer.html) —
     `calibrate`, `recalibrate` and `adapt`, and which one your target
     data allows.
--   [Split conformal](split.html) — the unweighted method this reduces
+-   [Split conformal](./split.html) — the unweighted method this reduces
     to.
 -   [Diagnostics](../capabilities/diagnostics.html) — measuring coverage
     and width together.

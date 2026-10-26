@@ -172,7 +172,7 @@ consequence: split conformal holds one width for four years, while the
 adaptive runs breathe.
 
 Which rate is right depends on how fast your process actually moves, and
-you do not know that in advance. [AgACI](agaci.html) exists so you do
+you do not know that in advance. [AgACI](./agaci.html) exists so you do
 not have to guess.
 
 ```python
@@ -198,14 +198,14 @@ start predicting.
 
 -   **You cannot feed truths back.** ACI without `update` is split
     conformal with extra steps. If your pipeline never learns what
-    actually happened, use [split conformal](split.html) or
-    [CQR](cqr.html) and be honest about it.
--   **You do not want to tune `gamma`.** Use [AgACI](agaci.html), which
-    runs a panel of learning rates and aggregates them online.
+    actually happened, use [split conformal](./split.html) or
+    [CQR](./cqr.html) and be honest about it.
+-   **You do not want to tune `gamma`.** Use [AgACI](./agaci.html),
+    which runs a panel of learning rates and aggregates them online.
 -   **Your problem is width, not level.** ACI moves the coverage target;
     it does not change the *shape* of the band. If the complaint is “too
     wide in calm periods, too narrow in volatile ones”, that is
-    [SPCI](spci.html).
+    [SPCI](./spci.html).
 
 ## References
 
@@ -214,8 +214,8 @@ Shift,” arXiv.org, 2021. https://arxiv.org/abs/2106.00170.
 
 ## Next
 
--   [AgACI](agaci.html) — ACI without choosing `gamma`.
--   [NexCP](nexcp.html) — the other answer to drift: down-weight stale
+-   [AgACI](./agaci.html) — ACI without choosing `gamma`.
+-   [NexCP](./nexcp.html) — the other answer to drift: down-weight stale
     residuals.
 -   [Online updating](../capabilities/online-updating.html) — the
     `predict`/`update` loop in general.

@@ -245,7 +245,7 @@ fitted = cqr.calibrate_cv(forecaster, n_windows=24)
 > is the only route to an asymmetric interval *from CQR*.
 >
 > It is not the only route to an asymmetric conformal interval.
-> [`SplitConformal(symmetric=False, alpha_lo=..., alpha_hi=...)`](split.html)
+> [`SplitConformal(symmetric=False, alpha_lo=..., alpha_hi=...)`](./split.html)
 > takes one one-sided conformal quantile of the **signed** residual per
 > tail, so it needs no quantile capability at all and works through
 > every adapter, the three Nixtla ones included. What it buys is
@@ -260,11 +260,12 @@ fitted = cqr.calibrate_cv(forecaster, n_windows=24)
 
 -   **Your forecaster has no quantiles.** Most gradient-boosting setups
     through mlforecast do not, and CQR will refuse the moment you
-    calibrate. Use [split conformal](split.html), or [SPCI](spci.html)
-    if you want varying width without a quantile-capable model.
+    calibrate. Use [split conformal](./split.html), or
+    [SPCI](./spci.html) if you want varying width without a
+    quantile-capable model.
 -   **Your coverage drifts over time.** CQR is offline: it calibrates
-    once. Pair the diagnosis with [ACI](aci.html) or
-    [NexCP](nexcp.html).
+    once. Pair the diagnosis with [ACI](./aci.html) or
+    [NexCP](./nexcp.html).
 
 ## References
 
@@ -274,8 +275,9 @@ https://arxiv.org/abs/1905.03222.
 
 ## Next
 
--   [ACI](aci.html) — the first online method, for coverage that drifts.
--   [SPCI](spci.html) — varying width from a residual model rather than
-    a quantile model.
--   [Methods overview](index.html) — the decision guide.
+-   [ACI](./aci.html) — the first online method, for coverage that
+    drifts.
+-   [SPCI](./spci.html) — varying width from a residual model rather
+    than a quantile model.
+-   [Methods overview](./index.html) — the decision guide.
 
