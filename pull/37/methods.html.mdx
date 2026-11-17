@@ -1120,7 +1120,7 @@ dominate any mean width or Winkler score they enter. Use
 common when ``gamma`` is large relative to ``alpha`` (or ``1 - alpha``):
 lower ``gamma``, or use
 :class:`~conformalforecast.methods.agaci.AggregatedAdaptiveConformalInference`,
-whose aggregator discounts a saturated expert and whose bounds are clipped.
+whose bounds are clipped to a finite band at the cost of an exact guarantee.
 
 #### `AdaptiveConformalInference.fit`
 
@@ -1305,11 +1305,15 @@ Notes
 **Saturated experts.** Each expert is a plain ACI recursion, so an expert
 whose ``alpha_t`` leaves ``(0, 1)`` asks for the whole real line
 (``alpha_t <= 0``) or the empty set (``alpha_t >= 1``); see the Notes on
-:class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here
-both of an expert's bounds are clipped into
-``[interval_clip_lower_, interval_clip_upper_]``, so a saturated expert
-contributes finite bounds and a large pinball loss, and the aggregators
-discount it. The emitted interval is therefore always finite and never has
+:class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here an
+empty-set expert contributes the point interval ``[prediction, prediction]``
+(and still counts every step as a miss), and an infinite-set expert's bounds
+are clipped to ``[interval_clip_lower_, interval_clip_upper_]``. Each
+expert's bounds then enter the aggregators like any other's: a saturated
+expert is weighted by its pinball loss, not excluded, so it can carry real
+weight -- an empty-set expert in particular when the target ``alpha`` is
+large, since a point interval at the forecast is then a good lower and upper
+quantile. The emitted interval is always finite and never has
 ``lower > upper``. The clip is the price: when it binds, the long-run
 coverage guarantee of the underlying experts no longer holds exactly.
 ``alpha_t_per_expert_`` shows which experts are saturated.

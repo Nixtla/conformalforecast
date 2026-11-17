@@ -213,8 +213,9 @@ start predicting.
     The mirror case, `alpha_t >= 1`, is the empty set, returned as a
     zero-width interval at the forecast. Both are part of the method and
     its guarantee, not bugs; check `fitted.saturation()` before trusting
-    a width, lower `gamma`, or use [AgACI](./agaci.html), whose bounds
-    are always finite.
+    a width, lower `gamma`, or use [AgACI](./agaci.html), which clips
+    its bounds to a finite band and gives up the exact guarantee in
+    exchange.
 
 ## References
 
