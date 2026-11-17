@@ -86,6 +86,20 @@ class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
     n_experts : int
         ``len(gammas)``, read-only — derived from the grid rather than
         settable alongside it.
+
+    Notes
+    -----
+    **Saturated experts.** Each expert is a plain ACI recursion, so an expert
+    whose ``alpha_t`` leaves ``(0, 1)`` asks for the whole real line
+    (``alpha_t <= 0``) or the empty set (``alpha_t >= 1``); see the Notes on
+    :class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here
+    both of an expert's bounds are clipped into
+    ``[interval_clip_lower_, interval_clip_upper_]``, so a saturated expert
+    contributes finite bounds and a large pinball loss, and the aggregators
+    discount it. The emitted interval is therefore always finite and never has
+    ``lower > upper``. The clip is the price: when it binds, the long-run
+    coverage guarantee of the underlying experts no longer holds exactly.
+    ``alpha_t_per_expert_`` shows which experts are saturated.
     """
 
     REQUIRED_CAPABILITIES: ClassVar[tuple[type, ...]] = ()
@@ -289,8 +303,11 @@ class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
             fv = first_valid[None, :, :]
             lower = np.where(fv, point_t[None, :, :], lower)
             upper = np.where(fv, point_t[None, :, :], upper)
-            lower = np.maximum(lower, clip_lower)
-            upper = np.minimum(upper, clip_upper)
+            # Clip both bounds into the band: an expert at alpha_t >= 1 has a
+            # -sentinel threshold, so its lower bound sits near +1e300 and its
+            # upper near -1e300 -- a one-sided clip would let those through.
+            lower = np.clip(lower, clip_lower, clip_upper)
+            upper = np.clip(upper, clip_lower, clip_upper)
 
             losses_lower = _pinball_loss(truth_t[None, :, :], lower, beta_lower)
             losses_upper = _pinball_loss(truth_t[None, :, :], upper, beta_upper)
@@ -370,8 +387,8 @@ class AgACIForecaster(ConformalForecaster):
         thresholds = masked_quantile(scores, levels).astype(point_squeezed.dtype, copy=False)
         lower = point_squeezed[None, :, :] - thresholds
         upper = point_squeezed[None, :, :] + thresholds
-        lower = np.maximum(lower, self.interval_clip_lower_)
-        upper = np.minimum(upper, self.interval_clip_upper_)
+        lower = np.clip(lower, self.interval_clip_lower_, self.interval_clip_upper_)
+        upper = np.clip(upper, self.interval_clip_lower_, self.interval_clip_upper_)
         return lower, upper
 
     def interval(
@@ -413,8 +430,8 @@ class AgACIForecaster(ConformalForecaster):
         # (K, n_series, n_samples, horizon)
         lower = preds[None, :, :, :] - thresholds[:, :, None, :]
         upper = preds[None, :, :, :] + thresholds[:, :, None, :]
-        lower = np.maximum(lower, self.interval_clip_lower_)
-        upper = np.minimum(upper, self.interval_clip_upper_)
+        lower = np.clip(lower, self.interval_clip_lower_, self.interval_clip_upper_)
+        upper = np.clip(upper, self.interval_clip_lower_, self.interval_clip_upper_)
         # Aggregator weights are float64; cast to preserve the input dtype.
         w_lower = self.aggregator_lower_.weights().astype(dtype)
         w_upper = self.aggregator_upper_.weights().astype(dtype)

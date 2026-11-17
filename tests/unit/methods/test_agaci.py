@@ -175,6 +175,29 @@ class TestOutOfRangePoints:
         assert (iv[..., 0] <= iv[..., 1]).all()
 
 
+class TestSaturatedExperts:
+    def test_an_empty_set_expert_does_not_leak_the_sentinel(self):
+        # alpha=0.95 with a fast expert drives that expert's alpha_t past 1: its
+        # unclipped bounds are +/-1e300 the wrong way round. Both bounds are
+        # clipped into the band, so the aggregate stays inside it.
+        rng = np.random.default_rng(0)
+        p = np.zeros(1200)
+        y = rng.normal(size=1200)
+        f = AggregatedAdaptiveConformalInference(alpha=0.95, gammas=(0.05, 0.3)).fit(
+            p[:200].reshape(1, -1, 1), y[:200].reshape(1, -1, 1)
+        )
+        lo, hi = f.interval_clip_lower_, f.interval_clip_upper_
+        reached_empty = False
+        for t in range(200, 1200):
+            reached_empty |= bool((f.alpha_t_per_expert_ >= 1.0).any())
+            step_p = p[t : t + 1].reshape(1, 1, 1)
+            iv = f.interval(step_p)
+            assert lo <= iv[..., 0].min() <= iv[..., 1].max() <= hi
+            assert (iv[..., 0] <= iv[..., 1]).all()
+            f.update(step_p, y[t : t + 1].reshape(1, 1, 1))
+        assert reached_empty
+
+
 class TestCoverage:
     def test_empirical_coverage_matches_alpha(self):
         # tol 0.04 matches tests/unit/methods/test_agaci_forecaster.py.

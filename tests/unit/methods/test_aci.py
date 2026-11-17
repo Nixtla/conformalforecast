@@ -40,6 +40,12 @@ class TestConstructor:
             method = AdaptiveConformalInference(alpha=0.1, gamma=0.5)
         assert method.gamma == 0.5
 
+    def test_gamma_of_exactly_point_one_warns(self):
+        # gamma=0.1 already saturates alpha_t on short streams, so the
+        # threshold is inclusive.
+        with pytest.warns(UserWarning, match="unusually large"):
+            AdaptiveConformalInference(alpha=0.1, gamma=0.1)
+
     def test_recommended_gamma_does_not_warn(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -181,3 +187,85 @@ class TestNaNMasking:
         # 1 - 0.8 == 0.19999999999999996; five windows meet ceil(1/0.2) = 5.
         preds, truths = _make_data(1, 5, 2)
         AdaptiveConformalInference(alpha=1 - 0.8).fit(preds, truths)
+
+
+def _stream(alpha, gamma, dtype=np.float64, n_cal=200, n_test=1000, seed=0):
+    """Fit on zero forecasts of N(0, 1) noise, then predict/update one step at a time.
+
+    Returns per-step intervals ``(n_test, 2)``, the saturation flag read just
+    before each ``interval`` call ``(n_test,)``, and the point forecasts.
+    """
+    rng = np.random.default_rng(seed)
+    p = np.zeros(n_cal + n_test, dtype=dtype)
+    y = rng.normal(size=n_cal + n_test).astype(dtype)
+    f = AdaptiveConformalInference(alpha=alpha, gamma=gamma).fit(
+        p[:n_cal].reshape(1, -1, 1), y[:n_cal].reshape(1, -1, 1)
+    )
+    ivs, sats = [], []
+    for t in range(n_cal, n_cal + n_test):
+        step_p, step_y = p[t : t + 1].reshape(1, 1, 1), y[t : t + 1].reshape(1, 1, 1)
+        sats.append(int(f.saturation()[0, 0]))
+        iv = f.interval(step_p)
+        assert iv.dtype == dtype
+        ivs.append(iv[0, 0, 0])
+        f.update(step_p, step_y)
+    return np.array(ivs), np.array(sats), p[n_cal:]
+
+
+class TestSaturation:
+    """alpha_t outside (0, 1): the infinite and empty sets of Gibbs & Candes."""
+
+    def _fitted_with_alpha_t(self, alpha_t):
+        preds, truths = _make_data(1, 60, len(alpha_t))
+        f = AdaptiveConformalInference(alpha=0.1, gamma=0.05).fit(preds, truths)
+        f.alpha_t_ = np.array([alpha_t], dtype=f.alpha_t_.dtype)
+        return f
+
+    def test_saturation_flags_follow_alpha_t(self):
+        f = self._fitted_with_alpha_t([-0.2, 0.0, 0.1, 1.0, 1.3])
+        np.testing.assert_array_equal(f.saturation(), [[1, 1, 0, -1, -1]])
+        assert f.saturation().dtype == np.int8
+
+    def test_infinite_and_empty_cells_in_one_interval(self):
+        f = self._fitted_with_alpha_t([-0.2, 0.1, 1.3])
+        pred = np.array([[[0.5, 0.5, 0.5]]])
+        iv = f.interval(pred)[0, 0]  # (horizon, 2)
+        np.testing.assert_array_equal(iv[0], [-1e300 + 0.5, 1e300 + 0.5])
+        assert iv[1, 0] < 0.5 < iv[1, 1]
+        np.testing.assert_array_equal(iv[2], [0.5, 0.5])  # empty set, not inverted
+
+    def test_update_counts_the_empty_set_as_a_miss_and_the_infinite_as_a_hit(self):
+        # truth == prediction gives score 0: inside any finite interval. The
+        # empty cell must still record a miss, the infinite cell a hit.
+        f = self._fitted_with_alpha_t([-0.2, 1.3])
+        before = f.alpha_t_.copy()
+        pred = np.full((1, 1, 2), 0.5)
+        f.update(pred, pred)
+        step = f.alpha_t_ - before
+        np.testing.assert_allclose(step, [[0.05 * 0.1, 0.05 * (0.1 - 1.0)]])
+
+    @pytest.mark.parametrize("dtype", [np.float64, np.float32])
+    def test_small_alpha_stream_saturates_high_and_covers(self, dtype):
+        ivs, sats, _ = _stream(alpha=0.02, gamma=0.05, dtype=dtype)
+        assert (sats == 1).any()
+        assert (sats >= 0).all()
+        sentinel = min(1e300, float(np.finfo(dtype).max) / 1e8)
+        high = sats == 1
+        np.testing.assert_allclose(ivs[high], [[-sentinel, sentinel]] * int(high.sum()))
+        assert (np.abs(ivs[~high]) < 1e3).all()
+
+    @pytest.mark.parametrize("dtype", [np.float64, np.float32])
+    def test_large_alpha_stream_never_inverts(self, dtype):
+        ivs, sats, points = _stream(alpha=0.95, gamma=0.05, dtype=dtype)
+        assert (sats == -1).any()  # the empty set is actually reached
+        assert (ivs[:, 0] <= ivs[:, 1]).all()
+        empty = sats == -1
+        np.testing.assert_array_equal(ivs[empty, 0], points[empty])
+        np.testing.assert_array_equal(ivs[empty, 1], points[empty])
+
+    def test_calibration_diagnostics_carry_saturation(self):
+        preds, truths = _make_data(2, 60, 3)
+        f = AdaptiveConformalInference(alpha=0.1).fit(preds, truths)
+        sat = f.calibration_.diagnostics["saturation"]
+        assert sat.shape == (2, 3)
+        np.testing.assert_array_equal(sat, f.saturation())
