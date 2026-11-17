@@ -9,7 +9,13 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field, model_validator
 
-from .._quantiles import ExpandingSortedScores, _ceil, masked_quantile
+from .._quantiles import (
+    ExpandingSortedScores,
+    _aci_levels,
+    _aci_saturation,
+    _ceil,
+    masked_quantile,
+)
 from ..aggregators import EWA
 from ..base import (
     CalibrationResult,
@@ -32,6 +38,33 @@ def _pinball_loss(
     """Pinball loss ``max(beta * (y - yhat), (beta - 1) * (y - yhat))``."""
     diff = truth - prediction
     return np.maximum(beta * diff, (beta - 1.0) * diff)
+
+
+def _expert_bounds(
+    point: NDArray[np.floating],
+    thresholds: NDArray[np.floating],
+    degenerate: NDArray[np.bool_],
+    clip_lower: float,
+    clip_upper: float,
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Per-expert ``(lower, upper)``, clipped into ``[clip_lower, clip_upper]``.
+
+    ``point`` broadcasts against ``thresholds`` and ``degenerate``. Where
+    ``degenerate`` is set -- an expert asking for the empty set
+    (``alpha_t >= 1``), or a cell's first valid calibration step -- both bounds
+    are the point itself, as in ACI. Inverting the ``-sentinel`` threshold
+    instead would give ``lower > upper``, which after clipping becomes
+    ``[clip_upper, clip_lower]``: a finite but inverted pair that pulls the
+    aggregate away from the forecast and earns a pinball loss set by the clip
+    width rather than by the expert. Both bounds are clipped on both sides so an
+    infinite-set expert (``+sentinel`` threshold) lands on the band edges.
+    """
+    lower = point - thresholds
+    upper = point + thresholds
+    point_b = np.broadcast_to(point, lower.shape)
+    lower = np.where(degenerate, point_b, lower)
+    upper = np.where(degenerate, point_b, upper)
+    return np.clip(lower, clip_lower, clip_upper), np.clip(upper, clip_lower, clip_upper)
 
 
 class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
@@ -92,11 +125,15 @@ class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
     **Saturated experts.** Each expert is a plain ACI recursion, so an expert
     whose ``alpha_t`` leaves ``(0, 1)`` asks for the whole real line
     (``alpha_t <= 0``) or the empty set (``alpha_t >= 1``); see the Notes on
-    :class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here
-    both of an expert's bounds are clipped into
-    ``[interval_clip_lower_, interval_clip_upper_]``, so a saturated expert
-    contributes finite bounds and a large pinball loss, and the aggregators
-    discount it. The emitted interval is therefore always finite and never has
+    :class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here an
+    empty-set expert contributes the point interval ``[prediction, prediction]``
+    (and still counts every step as a miss), and an infinite-set expert's bounds
+    are clipped to ``[interval_clip_lower_, interval_clip_upper_]``. Each
+    expert's bounds then enter the aggregators like any other's: a saturated
+    expert is weighted by its pinball loss, not excluded, so it can carry real
+    weight -- an empty-set expert in particular when the target ``alpha`` is
+    large, since a point interval at the forecast is then a good lower and upper
+    quantile. The emitted interval is always finite and never has
     ``lower > upper``. The clip is the price: when it binds, the long-run
     coverage guarantee of the underlying experts no longer holds exactly.
     ``alpha_t_per_expert_`` shows which experts are saturated.
@@ -290,24 +327,23 @@ class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
             first_valid = valid & ~has_past
 
             if t > 0:
-                levels = np.clip(1.0 - alpha_t, 0.0, 1.0)  # (K, n_series, horizon)
+                levels = _aci_levels(alpha_t)  # (K, n_series, horizon)
                 thresholds = prefix.quantile(levels)
             else:
                 # No history yet: every valid cell takes the first_valid
                 # degenerate path below, and invalid cells are masked out of both
                 # aggregator updates and the alpha_t step, so the value is inert.
                 thresholds = np.zeros((K, n_series, horizon), dtype=dtype)
-            lower = point_t[None, :, :] - thresholds
-            upper = point_t[None, :, :] + thresholds
-            # First valid step for a cell -> degenerate (point) interval.
-            fv = first_valid[None, :, :]
-            lower = np.where(fv, point_t[None, :, :], lower)
-            upper = np.where(fv, point_t[None, :, :], upper)
-            # Clip both bounds into the band: an expert at alpha_t >= 1 has a
-            # -sentinel threshold, so its lower bound sits near +1e300 and its
-            # upper near -1e300 -- a one-sided clip would let those through.
-            lower = np.clip(lower, clip_lower, clip_upper)
-            upper = np.clip(upper, clip_lower, clip_upper)
+            # An empty-set expert, and a cell's first valid step, get a point
+            # interval at the forecast.
+            empty = _aci_saturation(alpha_t) < 0  # (K, n_series, horizon)
+            lower, upper = _expert_bounds(
+                point_t[None, :, :],
+                thresholds,
+                empty | first_valid[None, :, :],
+                clip_lower,
+                clip_upper,
+            )
 
             losses_lower = _pinball_loss(truth_t[None, :, :], lower, beta_lower)
             losses_upper = _pinball_loss(truth_t[None, :, :], upper, beta_upper)
@@ -316,7 +352,10 @@ class AggregatedAdaptiveConformalInference(ConformalMethod["AgACIForecaster"]):
             aggregator_lower.update(np.where(keep, losses_lower, 0.0))
             aggregator_upper.update(np.where(keep, losses_upper, 0.0))
 
-            missed = ((truth_t[None, :, :] < lower) | (truth_t[None, :, :] > upper)).astype(dtype)
+            missed = (truth_t[None, :, :] < lower) | (truth_t[None, :, :] > upper)
+            # The empty set misses whatever the truth, even on a tie with the
+            # point the interval is emitted at.
+            missed = (missed | empty).astype(dtype)
             step = gammas_arr * (self.alpha - missed)
             alpha_t = np.where(keep, alpha_t + step, alpha_t)
             has_past = has_past | valid
@@ -382,14 +421,21 @@ class AgACIForecaster(ConformalForecaster):
         scores: NDArray[np.floating],
     ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Return ``(lower, upper)`` per expert, both shape ``(K, n_series, horizon)``."""
-        levels = np.clip(1.0 - self.alpha_t_per_expert_, 0.0, 1.0)
+        levels = _aci_levels(self.alpha_t_per_expert_)
         # Cast to the point dtype, as the pre-allocated array used to do.
         thresholds = masked_quantile(scores, levels).astype(point_squeezed.dtype, copy=False)
-        lower = point_squeezed[None, :, :] - thresholds
-        upper = point_squeezed[None, :, :] + thresholds
-        lower = np.clip(lower, self.interval_clip_lower_, self.interval_clip_upper_)
-        upper = np.clip(upper, self.interval_clip_lower_, self.interval_clip_upper_)
-        return lower, upper
+        return _expert_bounds(
+            point_squeezed[None, :, :],
+            thresholds,
+            self._empty_experts(),
+            self.interval_clip_lower_,
+            self.interval_clip_upper_,
+        )
+
+    def _empty_experts(self) -> NDArray[np.bool_]:
+        """Experts asking for the empty set (``alpha_t >= 1``), shape (K, n_series, horizon)."""
+        empty: NDArray[np.bool_] = _aci_saturation(self.alpha_t_per_expert_) < 0
+        return empty
 
     def interval(
         self,
@@ -424,14 +470,17 @@ class AgACIForecaster(ConformalForecaster):
                 f"match fitted state shape {state_shape}"
             )
         dtype = preds.dtype
-        levels = np.clip(1.0 - self.alpha_t_per_expert_, 0.0, 1.0)
+        levels = _aci_levels(self.alpha_t_per_expert_)
         # (K, n_series, horizon) in one batched gather over the expert axis.
         thresholds = masked_quantile(self.scores_, levels).astype(dtype, copy=False)
         # (K, n_series, n_samples, horizon)
-        lower = preds[None, :, :, :] - thresholds[:, :, None, :]
-        upper = preds[None, :, :, :] + thresholds[:, :, None, :]
-        lower = np.clip(lower, self.interval_clip_lower_, self.interval_clip_upper_)
-        upper = np.clip(upper, self.interval_clip_lower_, self.interval_clip_upper_)
+        lower, upper = _expert_bounds(
+            preds[None, :, :, :],
+            thresholds[:, :, None, :],
+            self._empty_experts()[:, :, None, :],
+            self.interval_clip_lower_,
+            self.interval_clip_upper_,
+        )
         # Aggregator weights are float64; cast to preserve the input dtype.
         w_lower = self.aggregator_lower_.weights().astype(dtype)
         w_upper = self.aggregator_upper_.weights().astype(dtype)
@@ -479,13 +528,15 @@ class AgACIForecaster(ConformalForecaster):
         dtype = self.scores_.dtype
         point_sq = p[:, 0, :]
         truth_sq = t[:, 0, :]
+        empty = self._empty_experts()  # read before alpha_t moves
         lower, upper = self._per_expert_bounds(point_sq, self.scores_)
         beta_lower = method.alpha / 2.0
         beta_upper = 1.0 - method.alpha / 2.0
         self.aggregator_lower_.update(_pinball_loss(truth_sq[None, :, :], lower, beta_lower))
         self.aggregator_upper_.update(_pinball_loss(truth_sq[None, :, :], upper, beta_upper))
 
-        missed = ((truth_sq[None, :, :] < lower) | (truth_sq[None, :, :] > upper)).astype(dtype)
+        missed = (truth_sq[None, :, :] < lower) | (truth_sq[None, :, :] > upper)
+        missed = (missed | empty).astype(dtype)  # the empty set always misses
         gammas_arr = np.asarray(method.gammas, dtype=dtype).reshape(method.n_experts, 1, 1)
         self.alpha_t_per_expert_ = self.alpha_t_per_expert_ + gammas_arr * (method.alpha - missed)
 

@@ -190,10 +190,26 @@ where a limit is deliberate rather than accidental, it says so.
   average it in — one saturated cell dominates a summary. The diagnostics
   layer has no method-agnostic way to tell a sentinel from a genuinely wide
   bound; reporting saturated cells separately would need the fitted object
-  passed in. AgACI is unharmed: it clips both bounds of every expert into
-  `[interval_clip_lower_, interval_clip_upper_]` and its aggregator discounts a
-  saturated expert, which is the argument for preferring it when finite widths
-  matter.
+  passed in. AgACI's emitted interval is always finite: an empty-set expert
+  contributes `[prediction, prediction]`, an infinite-set expert is clipped to
+  `[interval_clip_lower_, interval_clip_upper_]`, and the aggregators weight
+  both by pinball loss like any other expert. That trades the exact guarantee
+  for finite widths, so prefer AgACI when finite widths matter more than the
+  guarantee.
+- **An empty ACI interval scores as covered on an exact tie.** The empty set
+  is emitted as `lower == upper == prediction`, and the diagnostics' inclusive
+  check `lower <= truth <= upper` counts `truth == prediction` as covered,
+  while `update` counts the same step as a miss. Harmless on continuous data;
+  zero-forecast count data produces such ties routinely. Emitting NaN would
+  not fix it — the diagnostics exclude NaN cells rather than scoring them as
+  misses — so a real fix needs the saturation flags in the coverage functions.
+- **AgACI's infinite-set experts can miss.** An expert at `alpha_t <= 0` asks
+  for the whole line, but its bounds are clipped to the band before its own
+  miss is counted, so a truth outside `[interval_clip_lower_,
+  interval_clip_upper_]` registers a miss and drives that `alpha_t` further
+  down. Plain ACI counts misses against the unclipped threshold and never
+  does this. Counting each expert's misses against its unclipped threshold,
+  as ACI's `update` does, would make every expert an exact ACI recursion again.
 - **The weighted conformal quantile silently clamps instead of returning an
   infinite interval.** In Tibshirani et al. (2019) the construction returns an
   unbounded interval when `w(x_test)` is large enough that the normalized

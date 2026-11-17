@@ -9,7 +9,13 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field, field_validator
 
-from .._quantiles import ExpandingSortedScores, _ceil, masked_quantile
+from .._quantiles import (
+    ExpandingSortedScores,
+    _aci_levels,
+    _aci_saturation,
+    _ceil,
+    masked_quantile,
+)
 from ..base import (
     CalibrationResult,
     Exog,
@@ -77,7 +83,7 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
     common when ``gamma`` is large relative to ``alpha`` (or ``1 - alpha``):
     lower ``gamma``, or use
     :class:`~conformalforecast.methods.agaci.AggregatedAdaptiveConformalInference`,
-    whose aggregator discounts a saturated expert and whose bounds are clipped.
+    whose bounds are clipped to a finite band at the cost of an exact guarantee.
     """
 
     REQUIRED_CAPABILITIES: ClassVar[tuple[type, ...]] = ()
@@ -182,7 +188,7 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
                 diagnostics={
                     "gamma": self.gamma,
                     "alpha_t": alpha_t.copy(),
-                    "saturation": _saturation(alpha_t),
+                    "saturation": _aci_saturation(alpha_t),
                 },
             ),
             alpha_t_=alpha_t,
@@ -210,7 +216,7 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
             valid = ~np.isnan(current)
             missed = np.zeros((n_series, horizon), dtype=scores.dtype)
             if t > 0:
-                levels = np.clip(1.0 - alpha_t, 0.0, 1.0)
+                levels = _aci_levels(alpha_t)
                 threshold = prefix.quantile(levels)
                 seen = valid & has_past
                 missed = np.where(seen, (current > threshold).astype(scores.dtype), missed)
@@ -224,23 +230,6 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
             # Push AFTER the threshold: the prefix must stay scores[:, :t, :].
             prefix.push(current)
         return alpha_t
-
-
-def _levels(alpha_t: NDArray[np.floating]) -> NDArray[np.floating]:
-    """Quantile level ``1 - alpha_t`` clipped to ``[0, 1]``, shape-preserving."""
-    levels: NDArray[np.floating] = np.clip(1.0 - alpha_t, 0.0, 1.0)
-    return levels
-
-
-def _saturation(alpha_t: NDArray[np.floating]) -> NDArray[np.int8]:
-    """``+1`` where the set is infinite, ``-1`` where it is empty, else ``0``.
-
-    Derived from the same clipped level the quantile reads, so it agrees with
-    the saturation rule in ``_quantiles._linear_quantile_from_sorted`` exactly.
-    """
-    levels = _levels(alpha_t)
-    result: NDArray[np.int8] = (levels >= 1.0).astype(np.int8) - (levels <= 0.0).astype(np.int8)
-    return result
 
 
 class ACIForecaster(ConformalForecaster):
@@ -270,7 +259,7 @@ class ACIForecaster(ConformalForecaster):
         is what makes ``_update`` count an empty set as a miss and an infinite
         one as a hit. ``interval`` re-expresses the empty case for output.
         """
-        return masked_quantile(self.scores_, _levels(self.alpha_t_))
+        return masked_quantile(self.scores_, _aci_levels(self.alpha_t_))
 
     def saturation(self) -> NDArray[np.int8]:
         """
@@ -286,7 +275,7 @@ class ACIForecaster(ConformalForecaster):
             current state, so call it before each :meth:`interval` in an online
             loop. See the Notes on :class:`AdaptiveConformalInference`.
         """
-        return _saturation(self.alpha_t_)
+        return _aci_saturation(self.alpha_t_)
 
     def interval(
         self,
