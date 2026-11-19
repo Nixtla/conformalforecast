@@ -628,6 +628,10 @@ dict with keys:
         Total observations (calibration + updates).
     ``"gamma"`` : float
         Learning rate.
+    ``"saturation"`` : NDArray[np.int8], shape (n_series, horizon)
+        ``+1`` where the current interval is infinite (``alpha_t <= 0``),
+        ``-1`` where it is empty (``alpha_t >= 1``), ``0`` otherwise. See
+        :meth:`ACIForecaster.saturation`.
 
 Raises
 ------

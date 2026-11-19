@@ -1091,12 +1091,36 @@ alpha : float
     Miscoverage in (0, 1). Target coverage is ``1 - alpha``.
 gamma : float, default 0.05
     Learning rate for the ``alpha_t`` recursion. Gibbs & Candès recommend
-    ``[0.005, 0.05]``; values > 0.1 warn.
+    ``[0.005, 0.05]``; values >= 0.1 warn.
 seed : int, default 0
     Unused (kept for a uniform constructor signature); ACI is
     deterministic by construction.
 score : ScoreFunction or None, default None
     Defaults to :class:`AbsoluteResidual`.
+
+Notes
+-----
+**Infinite and empty intervals.** Nothing bounds ``alpha_t`` to ``(0, 1)``,
+and following Gibbs & Candès the prediction set at the two ends is:
+
+* ``alpha_t <= 0`` -- the whole real line. The score threshold saturates to
+  a large finite sentinel (``1e300`` for ``float64``,
+  ``finfo(dtype).max / 1e8`` for narrower dtypes), so the interval is about
+  ``[-1e300, 1e300]``. It always covers.
+* ``alpha_t >= 1`` -- the empty set, emitted as the degenerate interval
+  ``lower == upper == prediction``. It counts as a miss in ``update``
+  regardless of the truth.
+
+These two states are what keep ``alpha_t`` within ``[-gamma, 1 + gamma]``
+and so deliver the long-run coverage guarantee. Clipping ``alpha_t``, or
+the emitted bounds, would break that guarantee, so neither is done here.
+The sentinels are finite, so ``np.isfinite`` does not flag them, and they
+dominate any mean width or Winkler score they enter. Use
+:meth:`ACIForecaster.saturation` to find the affected cells. Saturation is
+common when ``gamma`` is large relative to ``alpha`` (or ``1 - alpha``):
+lower ``gamma``, or use
+:class:`~conformalforecast.methods.agaci.AggregatedAdaptiveConformalInference`,
+whose bounds are clipped to a finite band at the cost of an exact guarantee.
 
 #### `AdaptiveConformalInference.fit`
 
@@ -1118,8 +1142,9 @@ X : Exog or None
 Returns
 -------
 ACIForecaster
-    ``calibration_.diagnostics`` carries ``"gamma"`` and a copy of
-    ``alpha_t_``.
+    ``calibration_.diagnostics`` carries ``"gamma"``, a copy of
+    ``alpha_t_`` and ``"saturation"`` (see
+    :meth:`ACIForecaster.saturation`).
 
 Raises
 ------
@@ -1169,6 +1194,10 @@ X : Exog or None
 Returns
 -------
 Interval, shape (n_series, n_samples, horizon, 2)
+    Cells with ``alpha_t_ <= 0`` get the saturation sentinel bounds
+    (about ``[-1e300, 1e300]``); cells with ``alpha_t_ >= 1`` get the
+    empty set as ``lower == upper == prediction``. Lower never exceeds
+    upper. :meth:`saturation` flags both.
 
 Raises
 ------
@@ -1270,6 +1299,24 @@ Attributes
 n_experts : int
     ``len(gammas)``, read-only — derived from the grid rather than
     settable alongside it.
+
+Notes
+-----
+**Saturated experts.** Each expert is a plain ACI recursion, so an expert
+whose ``alpha_t`` leaves ``(0, 1)`` asks for the whole real line
+(``alpha_t <= 0``) or the empty set (``alpha_t >= 1``); see the Notes on
+:class:`~conformalforecast.methods.aci.AdaptiveConformalInference`. Here an
+empty-set expert contributes the point interval ``[prediction, prediction]``
+(and still counts every step as a miss), and an infinite-set expert's bounds
+are clipped to ``[interval_clip_lower_, interval_clip_upper_]``. Each
+expert's bounds then enter the aggregators like any other's: a saturated
+expert is weighted by its pinball loss, not excluded, so it can carry real
+weight -- an empty-set expert in particular when the target ``alpha`` is
+large, since a point interval at the forecast is then a good lower and upper
+quantile. The emitted interval is always finite and never has
+``lower > upper``. The clip is the price: when it binds, the long-run
+coverage guarantee of the underlying experts no longer holds exactly.
+``alpha_t_per_expert_`` shows which experts are saturated.
 
 #### `AggregatedAdaptiveConformalInference.fit`
 

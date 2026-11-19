@@ -206,6 +206,16 @@ start predicting.
     it does not change the *shape* of the band. If the complaint is “too
     wide in calm periods, too narrow in volatile ones”, that is
     [SPCI](./spci.html).
+-   **You need every interval to be finite.** When `gamma` is large
+    relative to `alpha`, `alpha_t` can fall to zero or below, and ACI
+    then returns the whole real line — a finite sentinel near `±1e300`,
+    which `np.isfinite` does not catch and which swamps any mean width.
+    The mirror case, `alpha_t >= 1`, is the empty set, returned as a
+    zero-width interval at the forecast. Both are part of the method and
+    its guarantee, not bugs; check `fitted.saturation()` before trusting
+    a width, lower `gamma`, or use [AgACI](./agaci.html), which clips
+    its bounds to a finite band and gives up the exact guarantee in
+    exchange.
 
 ## References
 
