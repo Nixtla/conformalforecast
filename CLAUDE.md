@@ -639,7 +639,7 @@ Following sklearn's convention, now expressed as pydantic fields:
   calibrate entry points return the fitted object, not the result). It has
   exactly two fields: `n_calibration_samples` — shape `(n_series,)`
   per-series effective counts — and `diagnostics`, a dict of method-specific
-  values: `"score_quantile"` (Split, CQR, NexCP), `"gamma"`/`"alpha_t"` (ACI),
+  values: `"score_quantile"` (Split, CQR, NexCP), `"gamma"`/`"alpha_t"`/`"saturation"` (ACI),
   `"gammas"`/`"alpha_t_per_expert"` (AgACI), `"rho"` (NexCP),
   `"window_size"`/`"beta_grid_size"`/`"refit_every"` (SPCI),
   `"score_quantile"`/`"pooling"` (WeightedSplit), `"scale_ratio"`/`"weight_summary"`

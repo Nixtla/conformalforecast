@@ -121,6 +121,29 @@ def _saturation_value(dtype: np.dtype) -> float:
     return float(min(_SATURATION_SENTINEL, float(np.finfo(dtype).max) / 1e8))
 
 
+def _aci_levels(alpha_t: NDArray[np.floating]) -> NDArray[np.floating]:
+    """Quantile level ``1 - alpha_t`` clipped to ``[0, 1]``, shape-preserving.
+
+    The one place ACI and AgACI turn a miscoverage rate into the level they pass
+    to :func:`masked_quantile` / :meth:`ExpandingSortedScores.quantile`, so
+    :func:`_aci_saturation` agrees with the saturation rule below by construction.
+    """
+    levels: NDArray[np.floating] = np.clip(1.0 - alpha_t, 0.0, 1.0)
+    return levels
+
+
+def _aci_saturation(alpha_t: NDArray[np.floating]) -> NDArray[np.int8]:
+    """``+1`` where the ACI set is infinite, ``-1`` where it is empty, else ``0``.
+
+    Shape-preserving. Read off the same clipped level the quantile receives, so
+    it matches :func:`_linear_quantile_from_sorted` exactly: ``level >= 1``
+    saturates to ``+sentinel`` and ``level <= 0`` to ``-sentinel``.
+    """
+    levels = _aci_levels(alpha_t)
+    result: NDArray[np.int8] = (levels >= 1.0).astype(np.int8) - (levels <= 0.0).astype(np.int8)
+    return result
+
+
 def _linear_quantile_from_sorted(
     sorted_scores: NDArray[np.floating],
     n_valid: NDArray[np.integer],

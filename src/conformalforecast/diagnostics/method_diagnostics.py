@@ -45,6 +45,10 @@ def aci_state(fitted: ACIForecaster) -> dict[str, Any]:
             Total observations (calibration + updates).
         ``"gamma"`` : float
             Learning rate.
+        ``"saturation"`` : NDArray[np.int8], shape (n_series, horizon)
+            ``+1`` where the current interval is infinite (``alpha_t <= 0``),
+            ``-1`` where it is empty (``alpha_t >= 1``), ``0`` otherwise. See
+            :meth:`ACIForecaster.saturation`.
 
     Raises
     ------
@@ -58,6 +62,7 @@ def aci_state(fitted: ACIForecaster) -> dict[str, Any]:
         "alpha_t_minus_alpha": alpha_t - fitted.method_.alpha,
         "n_observations": int(fitted.n_observations_),
         "gamma": float(fitted.method_.gamma),
+        "saturation": fitted.saturation(),
     }
 
 

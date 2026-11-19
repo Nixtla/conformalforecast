@@ -175,6 +175,52 @@ class TestOutOfRangePoints:
         assert (iv[..., 0] <= iv[..., 1]).all()
 
 
+class TestSaturatedExperts:
+    def test_an_empty_set_expert_does_not_pull_the_interval_off_the_forecast(self):
+        # alpha=0.95 with a fast expert drives that expert's alpha_t past 1.
+        # Its bounds must be the point forecast, not the clipped inversion
+        # [clip_upper, clip_lower], which used to drag the aggregate to a point
+        # near the band edge with the forecast outside it.
+        rng = np.random.default_rng(0)
+        p = np.zeros(1200)
+        y = rng.normal(size=1200)
+        f = AggregatedAdaptiveConformalInference(alpha=0.95, gammas=(0.05, 0.3)).fit(
+            p[:200].reshape(1, -1, 1), y[:200].reshape(1, -1, 1)
+        )
+        lo, hi = f.interval_clip_lower_, f.interval_clip_upper_
+        empty_steps = 0
+        for t in range(200, 1200):
+            empty_steps += bool((f.alpha_t_per_expert_ >= 1.0).any())
+            step_p = p[t : t + 1].reshape(1, 1, 1)
+            iv = f.interval(step_p)
+            assert lo <= iv[..., 0].min() <= iv[..., 1].max() <= hi
+            assert (iv[..., 0] <= 0.0).all()  # the forecast lies inside
+            assert (iv[..., 1] >= 0.0).all()
+            f.update(step_p, y[t : t + 1].reshape(1, 1, 1))
+        assert empty_steps > 0
+
+    def test_empty_set_expert_bounds_are_the_forecast(self):
+        preds, truths = _make_data(1, 60, 2)
+        f = AggregatedAdaptiveConformalInference(alpha=0.1, gammas=(0.01, 0.05)).fit(preds, truths)
+        f.alpha_t_per_expert_ = np.array([[[0.1, 0.1]], [[1.2, 0.1]]])  # (K, 1, horizon)
+        point = np.array([[0.3, 0.3]])
+        lower, upper = f._per_expert_bounds(point, f.scores_)
+        np.testing.assert_array_equal([lower[1, 0, 0], upper[1, 0, 0]], [0.3, 0.3])
+        assert lower[0, 0, 0] < 0.3 < upper[0, 0, 0]
+
+    def test_update_counts_an_empty_set_expert_as_a_miss_on_a_tie(self):
+        # truth == forecast lies inside the point interval [pred, pred], but the
+        # empty set misses whatever the truth.
+        preds, truths = _make_data(1, 60, 1)
+        f = AggregatedAdaptiveConformalInference(alpha=0.1, gammas=(0.01, 0.05)).fit(preds, truths)
+        f.alpha_t_per_expert_ = np.array([[[0.1]], [[1.2]]])
+        before = f.alpha_t_per_expert_.copy()
+        pred = np.full((1, 1, 1), 0.3)
+        f.update(pred, pred)
+        step = (f.alpha_t_per_expert_ - before)[:, 0, 0]
+        np.testing.assert_allclose(step, [0.01 * 0.1, 0.05 * (0.1 - 1.0)])
+
+
 class TestCoverage:
     def test_empirical_coverage_matches_alpha(self):
         # tol 0.04 matches tests/unit/methods/test_agaci_forecaster.py.

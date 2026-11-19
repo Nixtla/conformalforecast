@@ -61,8 +61,11 @@ class TestAciState:
             "alpha_t_minus_alpha",
             "n_observations",
             "gamma",
+            "saturation",
         }
         assert state["alpha_t"].shape == (2, 3)
+        assert state["saturation"].shape == (2, 3)
+        assert state["saturation"].dtype == np.int8
         assert state["alpha_t_minus_alpha"].shape == (2, 3)
         assert isinstance(state["n_observations"], int)
         assert state["gamma"] == pytest.approx(0.05)

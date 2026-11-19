@@ -9,7 +9,13 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import Field, field_validator
 
-from .._quantiles import ExpandingSortedScores, _ceil, masked_quantile
+from .._quantiles import (
+    ExpandingSortedScores,
+    _aci_levels,
+    _aci_saturation,
+    _ceil,
+    masked_quantile,
+)
 from ..base import (
     CalibrationResult,
     Exog,
@@ -48,12 +54,36 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
         Miscoverage in (0, 1). Target coverage is ``1 - alpha``.
     gamma : float, default 0.05
         Learning rate for the ``alpha_t`` recursion. Gibbs & Candès recommend
-        ``[0.005, 0.05]``; values > 0.1 warn.
+        ``[0.005, 0.05]``; values >= 0.1 warn.
     seed : int, default 0
         Unused (kept for a uniform constructor signature); ACI is
         deterministic by construction.
     score : ScoreFunction or None, default None
         Defaults to :class:`AbsoluteResidual`.
+
+    Notes
+    -----
+    **Infinite and empty intervals.** Nothing bounds ``alpha_t`` to ``(0, 1)``,
+    and following Gibbs & Candès the prediction set at the two ends is:
+
+    * ``alpha_t <= 0`` -- the whole real line. The score threshold saturates to
+      a large finite sentinel (``1e300`` for ``float64``,
+      ``finfo(dtype).max / 1e8`` for narrower dtypes), so the interval is about
+      ``[-1e300, 1e300]``. It always covers.
+    * ``alpha_t >= 1`` -- the empty set, emitted as the degenerate interval
+      ``lower == upper == prediction``. It counts as a miss in ``update``
+      regardless of the truth.
+
+    These two states are what keep ``alpha_t`` within ``[-gamma, 1 + gamma]``
+    and so deliver the long-run coverage guarantee. Clipping ``alpha_t``, or
+    the emitted bounds, would break that guarantee, so neither is done here.
+    The sentinels are finite, so ``np.isfinite`` does not flag them, and they
+    dominate any mean width or Winkler score they enter. Use
+    :meth:`ACIForecaster.saturation` to find the affected cells. Saturation is
+    common when ``gamma`` is large relative to ``alpha`` (or ``1 - alpha``):
+    lower ``gamma``, or use
+    :class:`~conformalforecast.methods.agaci.AggregatedAdaptiveConformalInference`,
+    whose bounds are clipped to a finite band at the cost of an exact guarantee.
     """
 
     REQUIRED_CAPABILITIES: ClassVar[tuple[type, ...]] = ()
@@ -77,7 +107,7 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
     @field_validator("gamma")
     @classmethod
     def _warn_on_large_gamma(cls, value: float) -> float:
-        if value > 0.1:
+        if value >= 0.1:
             warnings.warn(
                 f"gamma={value} is unusually large; Gibbs & Candes recommend "
                 "[0.005, 0.05]. Updates will be very noisy.",
@@ -110,8 +140,9 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
         Returns
         -------
         ACIForecaster
-            ``calibration_.diagnostics`` carries ``"gamma"`` and a copy of
-            ``alpha_t_``.
+            ``calibration_.diagnostics`` carries ``"gamma"``, a copy of
+            ``alpha_t_`` and ``"saturation"`` (see
+            :meth:`ACIForecaster.saturation`).
 
         Raises
         ------
@@ -154,7 +185,11 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
             n_calibration_samples_=n_calibration_samples,
             calibration_=CalibrationResult(
                 n_calibration_samples=n_calibration_samples.copy(),
-                diagnostics={"gamma": self.gamma, "alpha_t": alpha_t.copy()},
+                diagnostics={
+                    "gamma": self.gamma,
+                    "alpha_t": alpha_t.copy(),
+                    "saturation": _aci_saturation(alpha_t),
+                },
             ),
             alpha_t_=alpha_t,
             scores_=scores,
@@ -181,7 +216,7 @@ class AdaptiveConformalInference(ConformalMethod["ACIForecaster"]):
             valid = ~np.isnan(current)
             missed = np.zeros((n_series, horizon), dtype=scores.dtype)
             if t > 0:
-                levels = np.clip(1.0 - alpha_t, 0.0, 1.0)
+                levels = _aci_levels(alpha_t)
                 threshold = prefix.quantile(levels)
                 seen = valid & has_past
                 missed = np.where(seen, (current > threshold).astype(scores.dtype), missed)
@@ -218,8 +253,29 @@ class ACIForecaster(ConformalForecaster):
     scores_: NDArray[np.floating]
 
     def _threshold(self) -> NDArray[np.floating]:
-        """Score threshold per (series, horizon) at the current ``alpha_t_``."""
-        return masked_quantile(self.scores_, np.clip(1.0 - self.alpha_t_, 0.0, 1.0))
+        """Score threshold per (series, horizon) at the current ``alpha_t_``.
+
+        Saturated cells carry the ``-sentinel`` / ``+sentinel`` threshold, which
+        is what makes ``_update`` count an empty set as a miss and an infinite
+        one as a hit. ``interval`` re-expresses the empty case for output.
+        """
+        return masked_quantile(self.scores_, _aci_levels(self.alpha_t_))
+
+    def saturation(self) -> NDArray[np.int8]:
+        """
+        Which cells currently emit an infinite or an empty interval.
+
+        Returns
+        -------
+        NDArray[np.int8], shape (n_series, horizon)
+            ``+1`` where ``alpha_t_ <= 0`` (the interval is the saturation
+            sentinel, about ``[-1e300, 1e300]``), ``-1`` where
+            ``alpha_t_ >= 1`` (the empty set, emitted as
+            ``lower == upper == prediction``), ``0`` otherwise. Reflects the
+            current state, so call it before each :meth:`interval` in an online
+            loop. See the Notes on :class:`AdaptiveConformalInference`.
+        """
+        return _aci_saturation(self.alpha_t_)
 
     def interval(
         self,
@@ -239,6 +295,10 @@ class ACIForecaster(ConformalForecaster):
         Returns
         -------
         Interval, shape (n_series, n_samples, horizon, 2)
+            Cells with ``alpha_t_ <= 0`` get the saturation sentinel bounds
+            (about ``[-1e300, 1e300]``); cells with ``alpha_t_ >= 1`` get the
+            empty set as ``lower == upper == prediction``. Lower never exceeds
+            upper. :meth:`saturation` flags both.
 
         Raises
         ------
@@ -253,6 +313,12 @@ class ACIForecaster(ConformalForecaster):
                 f"match fitted alpha_t_ shape {self.alpha_t_.shape}"
             )
         result: Interval = self.score_fn_.invert(preds, self._threshold())
+        # Inverting the -sentinel threshold gives lower > upper; emit the empty
+        # set as a zero-width interval at the prediction instead.
+        empty = (self.saturation() < 0)[:, np.newaxis, :, np.newaxis]
+        if empty.any():
+            point = preds.astype(result.dtype, copy=False)[..., np.newaxis]
+            result = np.where(empty, point, result)
         return result
 
     def _update(

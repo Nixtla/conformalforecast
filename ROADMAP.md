@@ -142,8 +142,9 @@ where a limit is deliberate rather than accidental, it says so.
 - **A sequential Mode-1 replay is not available for ACI/AgACI.** Their
   `interval()` is a calibration-set constant, so broadcasting it is legitimate
   and the number is sane. Replaying their `fit` loop step by step would be
-  strictly better, but it runs straight into the unfloored `alpha_t` defect
-  below — the widths reach ~1e299 within the calibration set. Fix that first.
+  strictly better, but it runs straight into ACI's saturated intervals
+  below — the widths reach ~1e299 within the calibration set, and the replay's
+  width and Winkler summaries would average them in.
 - **SPCI under-covers badly at multi-step horizons on real data.** At horizon 6
   on both bundled datasets it lands near 65% against a 90% target, while split
   conformal holds 90% on the same forecaster; at horizon 1 it reaches nominal and
@@ -171,17 +172,44 @@ where a limit is deliberate rather than accidental, it says so.
   cube is unreachable there. Ragged panels calibrate fine; it is the aligned
   representation that is missing. Stated in the `calibrate_cv` docstring and
   nowhere else.
-- **ACI and AgACI can degenerate to infinite width.** Nothing bounds `alpha_t`
-  below zero, and at `alpha_t <= 0` the requested quantile falls beyond the
-  largest calibration score. A `gamma` of 0.2 reaches that state within a few
-  steps on a 48-month stream, producing widths around `1e299` — technically 100%
-  covering, and useless. The constructor warns above `gamma = 0.1` but nothing
-  stops it, and the threshold is off by one step: `gamma = 0.1` itself
-  degenerates on that same stream (see the expert table on the AgACI page) while
-  raising no warning at all, because the check is strictly greater-than. AgACI
-  is unharmed by a degenerate expert because the aggregator drops its weight,
-  which is a good argument for preferring it; plain ACI has no such protection.
-  Clipping `alpha_t` to a small positive floor would make the failure survivable.
+- **ACI can emit infinite intervals, and its widths then mean nothing.**
+  Nothing bounds `alpha_t` to `(0, 1)`. At `alpha_t <= 0` the requested
+  quantile is beyond the largest calibration score and the interval saturates
+  to about `[-1e300, 1e300]`; at `alpha_t >= 1` it is the empty set, emitted as
+  `lower == upper == prediction`. Both are Gibbs & Candès's construction, and
+  they are what keep `alpha_t` within `[-gamma, 1 + gamma]` and so deliver the
+  coverage guarantee — which is why `alpha_t` is deliberately *not* clipped:
+  any finite clip on `alpha_t` or on plain ACI's bounds forfeits the guarantee
+  whenever it binds. A `gamma` of 0.2 saturates within a few steps on a
+  48-month stream, and so does `gamma = 0.1` (see the expert table on the
+  AgACI page), which now triggers the large-`gamma` warning; on i.i.d. noise
+  the default `gamma = 0.05` at `alpha = 0.02` saturates about 30% of steps.
+  `ACIForecaster.saturation()` (also in `aci_state` and the calibration
+  diagnostics) flags the affected cells, but the sentinel is finite, so
+  `mean_interval_width`, `winkler_score` and `coverage_width_summary` still
+  average it in — one saturated cell dominates a summary. The diagnostics
+  layer has no method-agnostic way to tell a sentinel from a genuinely wide
+  bound; reporting saturated cells separately would need the fitted object
+  passed in. AgACI's emitted interval is always finite: an empty-set expert
+  contributes `[prediction, prediction]`, an infinite-set expert is clipped to
+  `[interval_clip_lower_, interval_clip_upper_]`, and the aggregators weight
+  both by pinball loss like any other expert. That trades the exact guarantee
+  for finite widths, so prefer AgACI when finite widths matter more than the
+  guarantee.
+- **An empty ACI interval scores as covered on an exact tie.** The empty set
+  is emitted as `lower == upper == prediction`, and the diagnostics' inclusive
+  check `lower <= truth <= upper` counts `truth == prediction` as covered,
+  while `update` counts the same step as a miss. Harmless on continuous data;
+  zero-forecast count data produces such ties routinely. Emitting NaN would
+  not fix it — the diagnostics exclude NaN cells rather than scoring them as
+  misses — so a real fix needs the saturation flags in the coverage functions.
+- **AgACI's infinite-set experts can miss.** An expert at `alpha_t <= 0` asks
+  for the whole line, but its bounds are clipped to the band before its own
+  miss is counted, so a truth outside `[interval_clip_lower_,
+  interval_clip_upper_]` registers a miss and drives that `alpha_t` further
+  down. Plain ACI counts misses against the unclipped threshold and never
+  does this. Counting each expert's misses against its unclipped threshold,
+  as ACI's `update` does, would make every expert an exact ACI recursion again.
 - **The weighted conformal quantile silently clamps instead of returning an
   infinite interval.** In Tibshirani et al. (2019) the construction returns an
   unbounded interval when `w(x_test)` is large enough that the normalized
